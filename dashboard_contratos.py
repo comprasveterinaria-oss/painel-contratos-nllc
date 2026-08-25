@@ -339,7 +339,7 @@ def render_painel_principal():
             st.divider()
             col_g1, col_g2 = st.columns(2)
             with col_g1:
-                st.subheader("🚨 Farol de Vencimentos NLLC")
+                st.subheader("🚨 Controle de prazos NLLC")
                 st.bar_chart(df_completo["farol_prazo"].value_counts())
             with col_g2:
                 st.subheader("📊 Distribuição por Modalidade")
