@@ -204,7 +204,7 @@ def render_painel_principal():
 
     # Controles da barra lateral
     st.sidebar.divider()
-    uasg_input = st.sidebar.text_input("Código UASG / UG:", value="158148")
+    uasg_input = st.sidebar.text_input("Código UASG / UG:", value="102110")
 
     if st.sidebar.button("🔄 Sincronizar Bases"):
         st.cache_data.clear()
