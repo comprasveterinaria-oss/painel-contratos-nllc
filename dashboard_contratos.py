@@ -71,7 +71,7 @@ if "token_comprasnet" not in st.session_state:
 def render_tela_login():
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("<h2 style='text-align: center;'>🔒 Central de Gestão e Governança NLLC</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: gray;'>Acesso restrito a servidores autorizados da Autarquia.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray;'>Acesso restrito a servidores autorizados da UASG.</p>", unsafe_allow_html=True)
     
     col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
     with col_l2:
@@ -345,7 +345,7 @@ def render_painel_principal():
                 st.subheader("📊 Distribuição por Modalidade")
                 st.bar_chart(df_completo["modalidade"].value_counts())
 
-            st.subheader("🏢 Top 5 Maiores Contratações da Autarquia")
+            st.subheader("🏢 Top 5 Maiores Contratações da UASG")
             top5 = df_completo.nlargest(5, "valor_global")[["numero", "fornecedor", "modalidade", "valor_global", "saldo_a_executar", "vigencia_fim"]]
             st.dataframe(top5, use_container_width=True, hide_index=True)
 
@@ -374,7 +374,7 @@ def render_painel_principal():
             g_c3.metric("Janela de Prorrogação (120d)", f"{dias_venc} dias restantes", "🚨 Iniciar Prorrogação!" if janela_120d else "Regular")
 
             st.divider()
-            st.markdown("<div class='alerta-local'>💾 <b>Ação Interna:</b> As alterações abaixo são salvas exclusivamente no banco de governança da sua autarquia (não afetam a base do Comprasnet).</div>", unsafe_allow_html=True)
+            st.markdown("<div class='alerta-local'>💾 <b>Ação Interna:</b> As alterações abaixo são salvas exclusivamente no banco de governança da sua UASG (não afetam a base do Comprasnet).</div>", unsafe_allow_html=True)
             
             with st.form(key=f"form_gestor_{id_sel}"):
                 st.markdown("#### ⚙️ Parametrização Jurídica e Limites")
@@ -667,7 +667,7 @@ def render_painel_principal():
         tab_r_int, tab_r_imp = st.tabs(["🎯 Matriz de Riscos (Interna - SQLite)", "🔍 Verificar Impedimentos (API Comprasnet)"])
 
         with tab_r_int:
-            st.markdown("<div class='alerta-local'>💾 <b>Ação Interna:</b> A Matriz de Riscos é mantida no banco da sua autarquia conforme o Art. 103 da Lei 14.133/2021.</div>", unsafe_allow_html=True)
+            st.markdown("<div class='alerta-local'>💾 <b>Ação Interna:</b> A Matriz de Riscos é mantida no banco da sua UASG conforme o Art. 103 da Lei 14.133/2021.</div>", unsafe_allow_html=True)
             if not df_completo.empty:
                 sel_r = st.selectbox("Selecione o Contrato:", [f"Contrato {r['numero']} - {r['fornecedor']} (ID: {r['id']})" for _, r in df_completo.iterrows()])
                 id_r = sel_r.split("ID: ")[-1].replace(")", "")
