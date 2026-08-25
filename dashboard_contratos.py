@@ -174,7 +174,7 @@ st.sidebar.image("https://img.icons8.com/fluency/96/scales.png", width=64)
 st.sidebar.title("Governança NLLC")
 st.sidebar.caption("Lei Federal nº 14.133/2021")
 
-uasg_input = st.sidebar.text_input("Código UASG / Unidade Gestora:", value="158148")
+uasg_input = st.sidebar.text_input("Código UASG / Unidade Gestora:", value="102110")
 
 if st.sidebar.button("🔄 Sincronizar Bases"):
     st.cache_data.clear()
