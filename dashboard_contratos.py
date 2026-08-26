@@ -4,7 +4,19 @@ import requests
 import sqlite3
 from datetime import datetime, date, timedelta
 import io
-
+def converter_data_segura(valor):
+    """Converte com segurança qualquer formato de data sem travar o app"""
+    if not valor or pd.isna(valor):
+        return None
+    v_str = str(valor).strip().split(" ")[0].split("T")[0]
+    if v_str.lower() in ["none", "nan", "null", ""]:
+        return None
+    for formato in ["%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d"]:
+        try:
+            return datetime.strptime(v_str, formato).date()
+        except ValueError:
+            pass
+    return None
 # ==============================================================================
 # CONFIGURAÇÃO GERAL DA PÁGINA & CSS RESPONSIVO
 # ==============================================================================
@@ -365,8 +377,14 @@ def render_painel_principal():
             limite_max = 50.0 if item["tipo_regime"] == "OBRA_ENGENHARIA" else 25.0
             g_c1.metric("Aditivos Acumulados (Art. 125)", f"{perc_adit:.2f}%", f"Teto: {limite_max:.0f}%", delta_color="inverse" if perc_adit >= 20.0 else "normal")
 
-            dt_base = item["data_base_reajuste"]
-            dias_base = (hoje - datetime.strptime(str(dt_base), "%Y-%m-%d").date()).days if dt_base else 0
+            dt_base_obj = converter_data_segura(item.get("data_base_reajuste"))
+            dias_base = (hoje - dt_base_obj).days if dt_base_obj else 0
+            g_c2.metric(
+               "Interregno de Reajuste (Art. 135)", 
+               f"{dias_base} dias" if dt_base_obj else "Não Definido", 
+               "Apto a Reajuste (≥ 1 ano)" if dias_base >= 365 else "Aguardando 1 ano" if dt_base_obj else "Data-base pendente",
+               delta_color="normal" if dias_base >= 365 else "off"
+            )
             g_c2.metric("Interregno de Reajuste (Art. 135)", f"{dias_base} dias", "Apto a Reajuste" if dias_base >= 365 else "Aguardando 1 ano")
 
             dias_venc = item["dias_restantes"] or 0
@@ -384,7 +402,8 @@ def render_painel_principal():
                     tem_demo = st.checkbox("Dedicação Exclusiva (DEMO)?", value=bool(item["tem_dedicacao_exclusiva"]))
                     status_gest = st.selectbox("Situação Local:", ["Vigente / Em Execução", "Em Renovação / Aditamento", "Sobrestado / Suspenso", "Em Notificação / Glosa", "Finalizado / Encerrado"], index=["Vigente / Em Execução", "Em Renovação / Aditamento", "Sobrestado / Suspenso", "Em Notificação / Glosa", "Finalizado / Encerrado"].index(item["status_gestao"]) if item["status_gestao"] in ["Vigente / Em Execução", "Em Renovação / Aditamento", "Sobrestado / Suspenso", "Em Notificação / Glosa", "Finalizado / Encerrado"] else 0)
                 with col_f2:
-                    dt_base_val = date.today()
+                    dt_base_val = converter_data_segura(item.get("data_base_reajuste")) or date.today()
+                    nova_dt_base = st.date_input("Data-Base do Reajuste:", value=dt_base_val)
                     if item["data_base_reajuste"]:
                         try: dt_base_val = datetime.strptime(str(item["data_base_reajuste"]), "%Y-%m-%d").date()
                         except: pass
