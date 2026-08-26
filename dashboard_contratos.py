@@ -4,6 +4,10 @@ import requests
 import sqlite3
 from datetime import datetime, date, timedelta
 import io
+
+# ==============================================================================
+# FUNÇÃO AUXILIAR DE TRATAMENTO DE DATAS (BLINDAGEM CONTRA VALORES NULOS)
+# ==============================================================================
 def converter_data_segura(valor):
     """Converte com segurança qualquer formato de data sem travar o app"""
     if not valor or pd.isna(valor):
@@ -17,6 +21,7 @@ def converter_data_segura(valor):
         except ValueError:
             pass
     return None
+
 # ==============================================================================
 # CONFIGURAÇÃO GERAL DA PÁGINA & CSS RESPONSIVO
 # ==============================================================================
@@ -328,7 +333,7 @@ def render_painel_principal():
     hoje = datetime.now().date()
 
     # ==========================================================================
-    # 1. ALTA GESTÃO & BI EXECUTIVO (IDEIA 2 - CRUZAMENTO RAP E CONTRATOS)
+    # 1. ALTA GESTÃO & BI EXECUTIVO
     # ==========================================================================
     if perfil_ativo == "🏛️ Alta Gestão & BI Executivo":
         st.title(f"🏛️ Painel Estratégico — UASG {uasg_input}")
@@ -351,7 +356,7 @@ def render_painel_principal():
             st.divider()
             col_g1, col_g2 = st.columns(2)
             with col_g1:
-                st.subheader("🚨 Controle de prazos NLLC")
+                st.subheader("🚨 Controle de Prazos NLLC")
                 st.bar_chart(df_completo["farol_prazo"].value_counts())
             with col_g2:
                 st.subheader("📊 Distribuição por Modalidade")
@@ -362,7 +367,7 @@ def render_painel_principal():
             st.dataframe(top5, use_container_width=True, hide_index=True)
 
     # ==========================================================================
-    # 2. GESTOR DO CONTRATO (AÇÃO INTERNA / SEM AVISO VERMELHO)
+    # 2. GESTOR DO CONTRATO (CORRIGIDO SEM DUPLICIDADES)
     # ==========================================================================
     elif perfil_ativo == "👔 Gestor do Contrato (Art. 117)":
         st.title("👔 Painel do Gestor do Contrato")
@@ -385,7 +390,6 @@ def render_painel_principal():
                "Apto a Reajuste (≥ 1 ano)" if dias_base >= 365 else "Aguardando 1 ano" if dt_base_obj else "Data-base pendente",
                delta_color="normal" if dias_base >= 365 else "off"
             )
-            g_c2.metric("Interregno de Reajuste (Art. 135)", f"{dias_base} dias", "Apto a Reajuste" if dias_base >= 365 else "Aguardando 1 ano")
 
             dias_venc = item["dias_restantes"] or 0
             janela_120d = (item["tipo_regime"] == "SERVICO_CONTINUO") and (0 <= dias_venc <= 120)
@@ -398,24 +402,30 @@ def render_painel_principal():
                 st.markdown("#### ⚙️ Parametrização Jurídica e Limites")
                 col_f1, col_f2, col_f3 = st.columns(3)
                 with col_f1:
-                    novo_regime = st.selectbox("Regime Contratual:", ["SERVICO_CONTINUO", "FORNECIMENTO_ESCOPO", "OBRA_ENGENHARIA"], index=["SERVICO_CONTINUO", "FORNECIMENTO_ESCOPO", "OBRA_ENGENHARIA"].index(item["tipo_regime"]) if item["tipo_regime"] in ["SERVICO_CONTINUO", "FORNECIMENTO_ESCOPO", "OBRA_ENGENHARIA"] else 0)
-                    tem_demo = st.checkbox("Dedicação Exclusiva (DEMO)?", value=bool(item["tem_dedicacao_exclusiva"]))
-                    status_gest = st.selectbox("Situação Local:", ["Vigente / Em Execução", "Em Renovação / Aditamento", "Sobrestado / Suspenso", "Em Notificação / Glosa", "Finalizado / Encerrado"], index=["Vigente / Em Execução", "Em Renovação / Aditamento", "Sobrestado / Suspenso", "Em Notificação / Glosa", "Finalizado / Encerrado"].index(item["status_gestao"]) if item["status_gestao"] in ["Vigente / Em Execução", "Em Renovação / Aditamento", "Sobrestado / Suspenso", "Em Notificação / Glosa", "Finalizado / Encerrado"] else 0)
+                    novo_regime = st.selectbox(
+                        "Regime Contratual:", 
+                        ["SERVICO_CONTINUO", "FORNECIMENTO_ESCOPO", "OBRA_ENGENHARIA"], 
+                        index=["SERVICO_CONTINUO", "FORNECIMENTO_ESCOPO", "OBRA_ENGENHARIA"].index(item["tipo_regime"]) if item["tipo_regime"] in ["SERVICO_CONTINUO", "FORNECIMENTO_ESCOPO", "OBRA_ENGENHARIA"] else 0,
+                        key=f"regime_{id_sel}"
+                    )
+                    tem_demo = st.checkbox("Dedicação Exclusiva (DEMO)?", value=bool(item["tem_dedicacao_exclusiva"]), key=f"demo_{id_sel}")
+                    status_gest = st.selectbox(
+                        "Situação Local:", 
+                        ["Vigente / Em Execução", "Em Renovação / Aditamento", "Sobrestado / Suspenso", "Em Notificação / Glosa", "Finalizado / Encerrado"], 
+                        index=["Vigente / Em Execução", "Em Renovação / Aditamento", "Sobrestado / Suspenso", "Em Notificação / Glosa", "Finalizado / Encerrado"].index(item["status_gestao"]) if item["status_gestao"] in ["Vigente / Em Execução", "Em Renovação / Aditamento", "Sobrestado / Suspenso", "Em Notificação / Glosa", "Finalizado / Encerrado"] else 0,
+                        key=f"status_{id_sel}"
+                    )
                 with col_f2:
                     dt_base_val = converter_data_segura(item.get("data_base_reajuste")) or date.today()
-                    nova_dt_base = st.date_input("Data-Base do Reajuste:", value=dt_base_val)
-                    if item["data_base_reajuste"]:
-                        try: dt_base_val = datetime.strptime(str(item["data_base_reajuste"]), "%Y-%m-%d").date()
-                        except: pass
-                    nova_dt_base = st.date_input("Data-Base do Reajuste:", value=dt_base_val)
-                    novo_val_aditado = st.number_input("Valor Aditado (R$):", value=float(item["valor_aditado_acumulado"]), min_value=0.0, format="%.2f")
-                    publicado_pncp_val = st.checkbox("Publicado no PNCP?", value=bool(item["publicado_pncp"]))
+                    nova_dt_base = st.date_input("Data-Base do Reajuste:", value=dt_base_val, key=f"dt_base_{id_sel}")
+                    novo_val_aditado = st.number_input("Valor Aditado (R$):", value=float(item["valor_aditado_acumulado"]), min_value=0.0, format="%.2f", key=f"val_aditado_{id_sel}")
+                    publicado_pncp_val = st.checkbox("Publicado no PNCP?", value=bool(item["publicado_pncp"]), key=f"pncp_{id_sel}")
                 with col_f3:
-                    nome_gestor = st.text_input("Gestor:", value=str(item["gestor_nome"]) if item["gestor_nome"] else "")
-                    nome_fisc_tec = st.text_input("Fiscal Técnico:", value=str(item["fiscal_tecnico"]) if item["fiscal_tecnico"] else "")
-                    nome_fisc_adm = st.text_input("Fiscal Administrativo:", value=str(item["fiscal_administrativo"]) if item["fiscal_administrativo"] else "")
+                    nome_gestor = st.text_input("Gestor:", value=str(item["gestor_nome"]) if item["gestor_nome"] else "", key=f"gestor_{id_sel}")
+                    nome_fisc_tec = st.text_input("Fiscal Técnico:", value=str(item["fiscal_tecnico"]) if item["fiscal_tecnico"] else "", key=f"fisc_tec_{id_sel}")
+                    nome_fisc_adm = st.text_input("Fiscal Administrativo:", value=str(item["fiscal_administrativo"]) if item["fiscal_administrativo"] else "", key=f"fisc_adm_{id_sel}")
 
-                anotacoes_txt = st.text_area("Despachos / Diário de Bordo:", value=str(item["anotacoes_gerais"]) if item["anotacoes_gerais"] else "")
+                anotacoes_txt = st.text_area("Despachos / Diário de Bordo:", value=str(item["anotacoes_gerais"]) if item["anotacoes_gerais"] else "", key=f"anot_{id_sel}")
 
                 if perfil_usuario == "editor":
                     if st.form_submit_button("💾 Salvar Parâmetros Internos"):
@@ -547,13 +557,12 @@ def render_painel_principal():
                     st.caption("Não foi possível carregar terceirizados em tempo real.")
 
     # ==========================================================================
-    # 5. MÓDULO OPERACIONAL DE FATURAS & APROPRIAÇÃO (APIS DE ESCRITA COMPRASNET)
+    # 5. MÓDULO OPERACIONAL DE FATURAS & APROPRIAÇÃO
     # ==========================================================================
     elif perfil_ativo == "💳 Operação Financeira & Faturas (Oficial Comprasnet)":
         st.title("💳 Operação Financeira Direta no Comprasnet (Escrita Oficial)")
         st.caption("Apropriação de Faturas, Cancelamentos e Vinculação de Empenhos (SIASG/Governo Federal)")
 
-        # 1. Autenticação de Operador Federal
         if not st.session_state["token_comprasnet"]:
             st.markdown("<div class='alerta-federal'>⚠️ <b>Acesso Operacional Restrito:</b> Para enviar comandos de apropriação e edição de faturas para o sistema do Governo Federal, faça login com seu usuário do Comprasnet/SIASG.</div>", unsafe_allow_html=True)
             with st.form("form_auth_comprasnet"):
@@ -578,7 +587,6 @@ def render_painel_principal():
                     except Exception as e:
                         st.error(f"Falha ao conectar com o Comprasnet: {e}")
         else:
-            # 2. Operações de Escrita Habilitadas
             st.success(f"🔓 Sessão Ativa no Comprasnet como: `{st.session_state['operador_comprasnet']}`")
             
             aba_apropriar, aba_editar_fat, aba_cancelar_apr = st.tabs([
@@ -593,7 +601,6 @@ def render_painel_principal():
                 "User-Agent": "Mozilla/5.0"
             }
 
-            # APROPRIAR FATURA
             with aba_apropriar:
                 st.markdown("<div class='alerta-federal'>⚠️ <b>ATENÇÃO: AÇÃO OFICIAL NO COMPRASNET</b><br>Ao clicar no botão abaixo, a fatura será apropriada oficialmente na base do Governo Federal para liquidação/pagamento.</div>", unsafe_allow_html=True)
                 
@@ -627,7 +634,6 @@ def render_painel_principal():
                             except Exception as e:
                                 st.error(f"Falha na requisição: {e}")
 
-            # EDITAR FATURA E VINCULAR EMPENHOS
             with aba_editar_fat:
                 st.markdown("<div class='alerta-federal'>⚠️ <b>ATENÇÃO: AÇÃO OFICIAL NO COMPRASNET</b><br>Esta operação altera a situação da fatura e seus empenhos vinculados no SIASG.</div>", unsafe_allow_html=True)
                 
@@ -656,7 +662,6 @@ def render_painel_principal():
                             except Exception as e:
                                 st.error(f"Erro: {e}")
 
-            # CANCELAR APROPRIAÇÃO
             with aba_cancelar_apr:
                 st.markdown("<div class='alerta-federal'>⚠️ <b>ATENÇÃO: AÇÃO CRÍTICA NO COMPRASNET</b><br>Cancelar ou excluir uma apropriação remove o registro financeiro na base oficial do Governo Federal.</div>", unsafe_allow_html=True)
                 with st.form("form_canc_apr"):
@@ -728,7 +733,7 @@ def render_painel_principal():
                         st.error(f"Erro na consulta: {e}")
 
     # ==========================================================================
-    # 7. RAIO-X INTEGRADO & BAIXAR PDFS COM 1 CLIQUE (IDEIA 3)
+    # 7. RAIO-X INTEGRADO & BAIXAR PDFS COM 1 CLIQUE
     # ==========================================================================
     elif perfil_ativo == "🔍 Raio-X Integrado & PDFs (360°)":
         st.title("🔍 Raio-X 360° do Contrato (Consultas ao Vivo)")
